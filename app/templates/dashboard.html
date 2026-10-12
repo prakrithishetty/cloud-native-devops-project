@@ -7,7 +7,9 @@
     <title>Cloud-Native DevOps Dashboard</title>
 
     <style>
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
 
         body {
             font-family: Arial, sans-serif;
@@ -23,7 +25,9 @@
             text-align: center;
         }
 
-        header p { color: #cbd5e1; }
+        header p {
+            color: #cbd5e1;
+        }
 
         .container {
             width: 92%;
@@ -54,13 +58,25 @@
             font-weight: bold;
         }
 
-        .green { color: #15803d; }
-        .red { color: #b91c1c; }
-        .blue { color: #1d4ed8; }
+        .green {
+            color: #15803d;
+        }
 
-        .section { margin-top: 28px; }
+        .red {
+            color: #b91c1c;
+        }
 
-        .deployment-info { line-height: 1.9; }
+        .blue {
+            color: #1d4ed8;
+        }
+
+        .section {
+            margin-top: 28px;
+        }
+
+        .deployment-info {
+            line-height: 1.9;
+        }
 
         table {
             width: 100%;
@@ -74,7 +90,9 @@
             border-bottom: 1px solid #e2e8f0;
         }
 
-        th { background: #e2e8f0; }
+        th {
+            background: #e2e8f0;
+        }
 
         .table-wrap {
             overflow-x: auto;
@@ -118,7 +136,9 @@
             cursor: pointer;
         }
 
-        button:hover { background: #1e40af; }
+        button:hover {
+            background: #1e40af;
+        }
 
         .message {
             padding: 12px;
@@ -127,9 +147,13 @@
             background: #f0fdf4;
         }
 
-        .error-message { background: #fef2f2; }
+        .error-message {
+            background: #fef2f2;
+        }
 
-        a { color: #1d4ed8; }
+        a {
+            color: #1d4ed8;
+        }
 
         footer {
             text-align: center;
@@ -138,13 +162,20 @@
         }
 
         @media (max-width: 600px) {
-            header h1 { font-size: 23px; }
-            th, td { padding: 9px; font-size: 13px; }
+            header h1 {
+                font-size: 23px;
+            }
+
+            th, td {
+                padding: 9px;
+                font-size: 13px;
+            }
         }
     </style>
 </head>
 
 <body>
+
 <header>
     <h1>Cloud-Native DevOps Dashboard</h1>
     <p>Application health, deployment history and infrastructure status</p>
@@ -157,6 +188,7 @@
         <h2>Application Status</h2>
 
         <div class="cards">
+
             <div class="card">
                 <h3>Application</h3>
                 <p class="status green">● RUNNING</p>
@@ -174,8 +206,11 @@
             <div class="card">
                 <h3>API Health</h3>
                 <p class="status green">● HEALTH CHECK</p>
-                <p><a href="/health">Check health endpoint</a></p>
+                <p>
+                    <a href="/health">Check health endpoint</a>
+                </p>
             </div>
+
         </div>
     </section>
 
@@ -188,6 +223,7 @@
                 <strong>Application:</strong>
                 {{ config_name | default('Cloud-Native DevOps Platform') }}
             </p>
+
             <p><strong>Version:</strong> 1.0.0</p>
             <p><strong>Environment:</strong> Development</p>
             <p><strong>Database:</strong> PostgreSQL 16</p>
@@ -200,26 +236,33 @@
         <h2>DevOps Components</h2>
 
         <div class="cards">
+
             <div class="card">
                 <h3>Docker</h3>
-                <p class="status green">RUNNING</p>
+                <p class="status blue">NOT VERIFIED</p>
                 <p>
-                    Flask application and PostgreSQL are running
-                    in Docker containers.
+                    Docker container status has not been verified yet.
                 </p>
             </div>
 
             <div class="card">
                 <h3>CI/CD Pipeline</h3>
-                <p class="status blue">PLANNED</p>
-                <p>GitHub Actions automation</p>
+                <p class="status blue">CONFIGURED</p>
+                <p>
+                    GitHub Actions workflow is configured.
+                    The latest workflow run was reported successful.
+                </p>
             </div>
 
             <div class="card">
                 <h3>Monitoring</h3>
-                <p class="status blue">PLANNED</p>
-                <p>Prometheus and Grafana</p>
+                <p class="status blue">CONFIGURED</p>
+                <p>
+                    Prometheus and Grafana configuration files are present.
+                    Runtime status has not been verified.
+                </p>
             </div>
+
         </div>
     </section>
 
@@ -245,6 +288,7 @@
 
             <form method="POST" action="/">
                 <label for="version">Application Version</label>
+
                 <input
                     type="text"
                     id="version"
@@ -257,6 +301,7 @@
                 <br><br>
 
                 <label for="environment">Environment</label>
+
                 <select id="environment" name="environment" required>
                     <option value="">Select environment</option>
                     <option value="Development">Development</option>
@@ -319,6 +364,7 @@
         <p>
             <a href="/api/deployments">View deployment API (JSON)</a>
         </p>
+
         <p>
             <a href="/api/info">View application information (JSON)</a>
         </p>
@@ -327,5 +373,6 @@
 </main>
 
 <footer>Cloud-Native DevOps Portfolio Project</footer>
+
 </body>
 </html>
