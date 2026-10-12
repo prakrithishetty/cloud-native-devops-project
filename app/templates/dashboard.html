@@ -1,0 +1,331 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cloud-Native DevOps Dashboard</title>
+
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f1f5f9;
+            color: #1e293b;
+            margin: 0;
+        }
+
+        header {
+            background: #172554;
+            color: white;
+            padding: 24px;
+            text-align: center;
+        }
+
+        header p { color: #cbd5e1; }
+
+        .container {
+            width: 92%;
+            max-width: 1150px;
+            margin: 28px auto;
+        }
+
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 18px;
+        }
+
+        .card, .panel {
+            background: white;
+            padding: 22px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px #0000000d;
+        }
+
+        .card h3 {
+            margin-top: 0;
+            color: #475569;
+        }
+
+        .status {
+            font-size: 19px;
+            font-weight: bold;
+        }
+
+        .green { color: #15803d; }
+        .red { color: #b91c1c; }
+        .blue { color: #1d4ed8; }
+
+        .section { margin-top: 28px; }
+
+        .deployment-info { line-height: 1.9; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        th, td {
+            text-align: left;
+            padding: 13px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        th { background: #e2e8f0; }
+
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: 10px;
+        }
+
+        .success {
+            color: #15803d;
+            font-weight: bold;
+        }
+
+        .failed {
+            color: #b91c1c;
+            font-weight: bold;
+        }
+
+        label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        input, select {
+            width: 100%;
+            max-width: 450px;
+            padding: 12px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            font-size: 15px;
+            background: white;
+        }
+
+        button {
+            background: #1d4ed8;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 12px 24px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover { background: #1e40af; }
+
+        .message {
+            padding: 12px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            background: #f0fdf4;
+        }
+
+        .error-message { background: #fef2f2; }
+
+        a { color: #1d4ed8; }
+
+        footer {
+            text-align: center;
+            padding: 25px;
+            color: #64748b;
+        }
+
+        @media (max-width: 600px) {
+            header h1 { font-size: 23px; }
+            th, td { padding: 9px; font-size: 13px; }
+        }
+    </style>
+</head>
+
+<body>
+<header>
+    <h1>Cloud-Native DevOps Dashboard</h1>
+    <p>Application health, deployment history and infrastructure status</p>
+</header>
+
+<main class="container">
+
+    <!-- Application status -->
+    <section>
+        <h2>Application Status</h2>
+
+        <div class="cards">
+            <div class="card">
+                <h3>Application</h3>
+                <p class="status green">● RUNNING</p>
+                <p>Flask web application</p>
+            </div>
+
+            <div class="card">
+                <h3>PostgreSQL Database</h3>
+                <p class="status {{ 'green' if database_status == 'Connected' else 'red' }}">
+                    ● {{ database_status | upper }}
+                </p>
+                <p>Deployment records storage</p>
+            </div>
+
+            <div class="card">
+                <h3>API Health</h3>
+                <p class="status green">● HEALTH CHECK</p>
+                <p><a href="/health">Check health endpoint</a></p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Deployment information -->
+    <section class="section">
+        <h2>Deployment Information</h2>
+
+        <div class="panel deployment-info">
+            <p>
+                <strong>Application:</strong>
+                {{ config_name | default('Cloud-Native DevOps Platform') }}
+            </p>
+            <p><strong>Version:</strong> 1.0.0</p>
+            <p><strong>Environment:</strong> Development</p>
+            <p><strong>Database:</strong> PostgreSQL 16</p>
+            <p><strong>Database port on host:</strong> 5433</p>
+        </div>
+    </section>
+
+    <!-- DevOps components -->
+    <section class="section">
+        <h2>DevOps Components</h2>
+
+        <div class="cards">
+            <div class="card">
+                <h3>Docker</h3>
+                <p class="status green">RUNNING</p>
+                <p>
+                    Flask application and PostgreSQL are running
+                    in Docker containers.
+                </p>
+            </div>
+
+            <div class="card">
+                <h3>CI/CD Pipeline</h3>
+                <p class="status blue">PLANNED</p>
+                <p>GitHub Actions automation</p>
+            </div>
+
+            <div class="card">
+                <h3>Monitoring</h3>
+                <p class="status blue">PLANNED</p>
+                <p>Prometheus and Grafana</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Deploy new version form -->
+    <section class="section">
+        <h2>Deploy New Version</h2>
+
+        <div class="panel">
+            <p>
+                Enter a version and environment to create a deployment
+                record in PostgreSQL.
+            </p>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% for category, message in messages %}
+                    <div class="message {{ 'error-message' if category == 'error' else '' }}">
+                        <p class="{{ 'failed' if category == 'error' else 'success' }}">
+                            {{ message }}
+                        </p>
+                    </div>
+                {% endfor %}
+            {% endwith %}
+
+            <form method="POST" action="/">
+                <label for="version">Application Version</label>
+                <input
+                    type="text"
+                    id="version"
+                    name="version"
+                    placeholder="Example: v2.0.0"
+                    maxlength="50"
+                    required
+                >
+
+                <br><br>
+
+                <label for="environment">Environment</label>
+                <select id="environment" name="environment" required>
+                    <option value="">Select environment</option>
+                    <option value="Development">Development</option>
+                    <option value="Testing">Testing</option>
+                    <option value="Production">Production</option>
+                </select>
+
+                <br><br>
+
+                <button type="submit">Deploy</button>
+            </form>
+
+            <p>
+                <small>
+                    Demo feature: this form records a deployment entry.
+                    It does not deploy application code to a server.
+                </small>
+            </p>
+        </div>
+    </section>
+
+    <!-- Deployment history -->
+    <section class="section">
+        <h2>Recent Deployments</h2>
+
+        <div class="panel table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Version</th>
+                        <th>Environment</th>
+                        <th>Status</th>
+                        <th>Deployed At</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for deployment in deployments %}
+                    <tr>
+                        <td>{{ deployment.id }}</td>
+                        <td>{{ deployment.version }}</td>
+                        <td>{{ deployment.environment }}</td>
+                        <td class="{{ 'success' if deployment.status|upper == 'SUCCESS' else 'failed' }}">
+                            {{ deployment.status }}
+                        </td>
+                        <td>{{ deployment.deployed_at }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5">
+                            No deployment records found in the database.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <p>
+            <a href="/api/deployments">View deployment API (JSON)</a>
+        </p>
+        <p>
+            <a href="/api/info">View application information (JSON)</a>
+        </p>
+    </section>
+
+</main>
+
+<footer>Cloud-Native DevOps Portfolio Project</footer>
+</body>
+</html>
