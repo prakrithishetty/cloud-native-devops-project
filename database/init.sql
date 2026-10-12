@@ -1,7 +1,9 @@
+
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
-    email VARCHAR(150) UNIQUE NOT NULL,
+    email VARCHAR(150) UNIQUE,
+    role VARCHAR(100) NOT NULL DEFAULT 'User',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -13,10 +15,10 @@ CREATE TABLE IF NOT EXISTS deployments (
     deployed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO users (name, email)
+INSERT INTO users (name, email, role)
 VALUES
-    ('Admin User', 'admin@example.com'),
-    ('DevOps Engineer', 'devops@example.com')
+    ('Admin User', 'admin@example.com', 'Admin'),
+    ('DevOps Engineer', 'devops@example.com', 'Engineer')
 ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO deployments (version, environment, status)
