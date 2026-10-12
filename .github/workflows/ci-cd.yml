@@ -12,6 +12,24 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: devopsdb
+          POSTGRES_USER: devops
+          POSTGRES_PASSWORD: devops_password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U devops -d devopsdb"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://devops:devops_password@localhost:5432/devopsdb
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -26,13 +44,22 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r app/requirements.txt
 
-      - name: Run tests
+      - name: Initialize database tables
         run: |
-          python -m pytest app/tests -v
+          python -c "import os, time, psycopg2; from pathlib import Path; d=os.environ['DATABASE_URL']; sql=Path('database/init.sql').read_text(); c=None; 
+          for i in range(20):
+           try:
+            c=psycopg2.connect(d); break
+           except psycopg2.OperationalError:
+            time.sleep(2)
+          assert c is not None, 'PostgreSQL did not become ready'
+          cur=c.cursor(); cur.execute(sql); c.commit(); cur.close(); c.close()"
+
+      - name: Run tests
+        run: python -m pytest app/tests -v
 
       - name: Check Python syntax
-        run: |
-          python -m py_compile app/app.py app/config.py app/database.py
+        run: python -m py_compile app/app.py app/config.py app/database.py
 
       - name: Build Docker image
         run: docker build -t cloud-native-devops-dashboard:ci .
