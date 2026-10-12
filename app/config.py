@@ -18,6 +18,6 @@ class Config:
     )
 
     DATABASE_URL = os.getenv(
-        "DATABASE_URL",
-        "postgresql://devops:devops_password@127.0.0.1:5433/devopsdb"
-    )
+    "DATABASE_URL",
+    "postgresql://devops:devops_password@127.0.0.1:5433/devopsdb?connect_timeout=3"
+)
