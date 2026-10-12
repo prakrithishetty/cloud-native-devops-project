@@ -1,11 +1,85 @@
 
-from flask import Flask, jsonify, render_template, request, redirect, url_for, flash
+from time import perf_counter
+
+from flask import (
+    Flask,
+    jsonify,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+)
 from config import Config
 from database import get_db_connection
+from prometheus_client import (
+    Counter,
+    Histogram,
+    generate_latest,
+    CONTENT_TYPE_LATEST,
+)
 
 app = Flask(__name__)
 app.secret_key = "local-development-secret-change-me"
 
+
+# -------------------------
+# Prometheus metrics
+# -------------------------
+
+REQUEST_COUNT = Counter(
+    "flask_http_requests_total",
+    "Total HTTP requests handled by Flask",
+    ["method", "endpoint", "status"],
+)
+
+REQUEST_LATENCY = Histogram(
+    "flask_http_request_duration_seconds",
+    "HTTP request duration in seconds",
+    ["method", "endpoint"],
+)
+
+
+@app.before_request
+def start_request_timer():
+    request.start_time = perf_counter()
+
+
+@app.after_request
+def record_request_metrics(response):
+    endpoint = request.endpoint or "unknown"
+    method = request.method
+
+    REQUEST_COUNT.labels(
+        method=method,
+        endpoint=endpoint,
+        status=str(response.status_code),
+    ).inc()
+
+    duration = perf_counter() - getattr(
+        request, "start_time", perf_counter()
+    )
+
+    REQUEST_LATENCY.labels(
+        method=method,
+        endpoint=endpoint,
+    ).observe(duration)
+
+    return response
+
+
+@app.route("/metrics")
+def metrics():
+    return (
+        generate_latest(),
+        200,
+        {"Content-Type": CONTENT_TYPE_LATEST},
+    )
+
+
+# -------------------------
+# Dashboard
+# -------------------------
 
 @app.route("/", methods=["GET", "POST"])
 def dashboard():
@@ -13,8 +87,13 @@ def dashboard():
         version = request.form.get("version", "").strip()
         environment = request.form.get("environment", "").strip()
 
-        if not version or environment not in ["Development", "Testing", "Production"]:
-            flash("Enter a version and select a valid environment.", "error")
+        if not version or environment not in [
+            "Development", "Testing", "Production"
+        ]:
+            flash(
+                "Enter a version and select a valid environment.",
+                "error",
+            )
             return redirect(url_for("dashboard"))
 
         connection = None
@@ -23,21 +102,35 @@ def dashboard():
         try:
             connection = get_db_connection()
             cursor = connection.cursor()
+
             cursor.execute(
-                "INSERT INTO deployments (version, environment, status) VALUES (%s, %s, %s) RETURNING id",
-                (version, environment, "SUCCESS")
+                """
+                INSERT INTO deployments (version, environment, status)
+                VALUES (%s, %s, %s)
+                RETURNING id
+                """,
+                (version, environment, "SUCCESS"),
             )
+
             deployment_id = cursor.fetchone()[0]
             connection.commit()
+
             flash(
-                f"Deployment record #{deployment_id} saved. This records a deployment; it does not deploy to a server.",
-                "success"
+                f"Deployment record #{deployment_id} saved. "
+                "This records a deployment; it does not deploy to a server.",
+                "success",
             )
+
         except Exception:
             if connection:
                 connection.rollback()
+
             app.logger.exception("Could not save deployment")
-            flash("Could not save the deployment. Check the database.", "error")
+            flash(
+                "Could not save the deployment. Check the database.",
+                "error",
+            )
+
         finally:
             if cursor:
                 cursor.close()
@@ -54,20 +147,31 @@ def dashboard():
     try:
         connection = get_db_connection()
         cursor = connection.cursor()
+
         cursor.execute(
-            "SELECT id, version, environment, status, deployed_at FROM deployments ORDER BY deployed_at DESC, id DESC"
+            """
+            SELECT id, version, environment, status, deployed_at
+            FROM deployments
+            ORDER BY deployed_at DESC, id DESC
+            """
         )
+
         for row in cursor.fetchall():
             deployments.append({
                 "id": row[0],
                 "version": row[1],
                 "environment": row[2],
                 "status": row[3],
-                "deployed_at": row[4].strftime("%Y-%m-%d %H:%M:%S") if row[4] else "N/A"
+                "deployed_at": (
+                    row[4].strftime("%Y-%m-%d %H:%M:%S")
+                    if row[4] else "N/A"
+                ),
             })
+
     except Exception:
         database_status = "Disconnected"
         app.logger.exception("Could not load deployments")
+
     finally:
         if cursor:
             cursor.close()
@@ -77,23 +181,27 @@ def dashboard():
     return render_template(
         "dashboard.html",
         deployments=deployments,
-        database_status=database_status
+        database_status=database_status,
     )
 
+
+# -------------------------
+# Health and application info
+# -------------------------
 
 @app.route("/health")
 def health():
     return jsonify({
         "status": "healthy",
         "version": Config.APP_VERSION,
-        "service": "cloud-native-devops-app"
+        "service": "cloud-native-devops-app",
     })
 
 
 @app.route("/api/status")
 def api_status():
     return jsonify({
-        "application": "running"
+        "application": "running",
     })
 
 
@@ -103,9 +211,13 @@ def info():
         "application": Config.APP_NAME,
         "version": Config.APP_VERSION,
         "environment": Config.ENVIRONMENT,
-        "status": "running"
+        "status": "running",
     })
 
+
+# -------------------------
+# Users API
+# -------------------------
 
 @app.route("/api/users", methods=["GET", "POST"])
 def api_users():
@@ -122,34 +234,58 @@ def api_users():
             role = str(data.get("role", "")).strip()
 
             if not name or not role:
-                return jsonify({"error": "name and role are required"}), 400
+                return jsonify({
+                    "error": "name and role are required",
+                }), 400
 
             cursor.execute(
-                "INSERT INTO users (name, role) VALUES (%s, %s) RETURNING id, name, role",
-                (name, role)
+                """
+                INSERT INTO users (name, role)
+                VALUES (%s, %s)
+                RETURNING id, name, role
+                """,
+                (name, role),
             )
+
             row = cursor.fetchone()
             connection.commit()
-            return jsonify({"id": row[0], "name": row[1], "role": row[2]}), 201
 
-        cursor.execute("SELECT id, name, role FROM users ORDER BY id")
+            return jsonify({
+                "id": row[0],
+                "name": row[1],
+                "role": row[2],
+            }), 201
+
+        cursor.execute(
+            "SELECT id, name, role FROM users ORDER BY id"
+        )
+
         users = [
             {"id": row[0], "name": row[1], "role": row[2]}
             for row in cursor.fetchall()
         ]
+
         return jsonify(users)
 
     except Exception:
         if connection:
             connection.rollback()
+
         app.logger.exception("User API failed")
-        return jsonify({"error": "User operation failed"}), 500
+        return jsonify({
+            "error": "User operation failed",
+        }), 500
+
     finally:
         if cursor:
             cursor.close()
         if connection:
             connection.close()
 
+
+# -------------------------
+# Deployments API
+# -------------------------
 
 @app.route("/api/deployments", methods=["GET", "POST"])
 def api_deployments():
@@ -166,43 +302,67 @@ def api_deployments():
             environment = str(data.get("environment", "")).strip()
             status = str(data.get("status", "SUCCESS")).strip()
 
-            if not version or environment not in ["Development", "Testing", "Production"]:
-                return jsonify({"error": "Valid version and environment are required"}), 400
+            if not version or environment not in [
+                "Development", "Testing", "Production"
+            ]:
+                return jsonify({
+                    "error": "Valid version and environment are required",
+                }), 400
 
             if status not in ["SUCCESS", "FAILED"]:
-                return jsonify({"error": "status must be SUCCESS or FAILED"}), 400
+                return jsonify({
+                    "error": "status must be SUCCESS or FAILED",
+                }), 400
 
             cursor.execute(
-                "INSERT INTO deployments (version, environment, status) VALUES (%s, %s, %s) RETURNING id, version, environment, status",
-                (version, environment, status)
+                """
+                INSERT INTO deployments (version, environment, status)
+                VALUES (%s, %s, %s)
+                RETURNING id, version, environment, status
+                """,
+                (version, environment, status),
             )
+
             row = cursor.fetchone()
             connection.commit()
+
             return jsonify({
                 "id": row[0],
                 "version": row[1],
                 "environment": row[2],
-                "status": row[3]
+                "status": row[3],
             }), 201
 
         cursor.execute(
-            "SELECT id, version, environment, status, deployed_at FROM deployments ORDER BY deployed_at DESC, id DESC"
+            """
+            SELECT id, version, environment, status, deployed_at
+            FROM deployments
+            ORDER BY deployed_at DESC, id DESC
+            """
         )
-        deployments = [{
-            "id": row[0],
-            "version": row[1],
-            "environment": row[2],
-            "status": row[3],
-            "deployed_at": row[4].isoformat() if row[4] else None
-        } for row in cursor.fetchall()]
+
+        deployments = [
+            {
+                "id": row[0],
+                "version": row[1],
+                "environment": row[2],
+                "status": row[3],
+                "deployed_at": row[4].isoformat() if row[4] else None,
+            }
+            for row in cursor.fetchall()
+        ]
 
         return jsonify(deployments)
 
     except Exception:
         if connection:
             connection.rollback()
+
         app.logger.exception("Deployment API failed")
-        return jsonify({"error": "Deployment operation failed"}), 500
+        return jsonify({
+            "error": "Deployment operation failed",
+        }), 500
+
     finally:
         if cursor:
             cursor.close()
