@@ -59,7 +59,7 @@ services:
     restart: unless-stopped
 
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:11.6.0
     container_name: devops-grafana
     ports:
       - "3000:3000"
@@ -73,3 +73,4 @@ services:
 volumes:
   postgres_data:
   grafana_data:
+
